@@ -1,0 +1,252 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}</style><link rel="manifest" href="manifest.json"><link rel="apple-touch-icon" href="icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"></head><body>
+<title>Stride Log</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="theme-color" content="#17694f">
+<style>
+/* Layout: one narrow column — stopwatch "lane" on top, controls, then run history. System fonts only so it works offline. */
+:root{
+  --bg:#f3f5f1; --surface:#ffffff; --ink:#18221d; --muted:#5d6b63; --line:#d9e0da;
+  --accent:#17694f; --accent-ink:#ffffff; --stop:#b8462e; --lane:rgba(23,105,79,.07);
+  --f-num:"Roboto Condensed","Arial Narrow","Helvetica Neue",ui-sans-serif,system-ui,sans-serif;
+  --f-body:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1512; --surface:#18201c; --ink:#e7eee9; --muted:#93a39a; --line:#2a3530;
+  --accent:#3fb98c; --accent-ink:#06130d; --stop:#e0745a; --lane:rgba(63,185,140,.08); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1512; --surface:#18201c; --ink:#e7eee9; --muted:#93a39a; --line:#2a3530;
+  --accent:#3fb98c; --accent-ink:#06130d; --stop:#e0745a; --lane:rgba(63,185,140,.08); color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px 40px}
+.wrap{max-width:520px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+header{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+h1{font-family:var(--f-num);font-weight:700;font-size:1.6rem;letter-spacing:.02em;margin:0;text-transform:uppercase}
+h2{font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0;font-weight:600}
+.small{font-size:.82rem;color:var(--muted)}
+
+.lane{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px 18px 18px;
+  background-image:repeating-linear-gradient(90deg,transparent 0 23%,var(--lane) 23% 24%);display:flex;flex-direction:column;gap:16px}
+.status{display:flex;align-items:center;gap:8px;font-size:.82rem;color:var(--muted)}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--line)}
+.running .dot{background:var(--accent);animation:pulse 1.2s infinite}
+.paused .dot{background:var(--stop)}
+@keyframes pulse{50%{opacity:.3}}
+@media (prefers-reduced-motion:reduce){.running .dot{animation:none}}
+.clock{font-family:var(--f-num);font-weight:700;font-size:clamp(3.6rem,19vw,5.6rem);line-height:1;text-align:center;
+  font-variant-numeric:tabular-nums;letter-spacing:.01em}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}
+.stat b{display:block;font-family:var(--f-num);font-size:1.7rem;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
+.stat span{font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+
+.controls{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+button{font:inherit;font-weight:600;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);
+  padding:14px 12px;cursor:pointer;font-size:1rem}
+button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-size:1.15rem}
+.danger{color:var(--stop);border-color:var(--stop)}
+.solo{grid-column:1/-1}
+button:disabled{opacity:.4;cursor:default}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+label{display:flex;flex-direction:column;gap:4px;font-size:.8rem;color:var(--muted);font-weight:600}
+input{font:inherit;font-size:1.05rem;padding:10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);width:100%;min-width:0;font-variant-numeric:tabular-nums}
+.gps{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.chip{font-size:.75rem;padding:3px 9px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
+.chip.on{color:var(--accent);border-color:var(--accent)}
+
+.week{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.week div{display:flex;flex-direction:column}
+.week b{font-family:var(--f-num);font-size:1.4rem;font-variant-numeric:tabular-nums}
+.week span{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+
+ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+li{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:12px 0;border-top:1px solid var(--line)}
+li:first-child{border-top:0}
+.r-main{font-family:var(--f-num);font-size:1.15rem;font-weight:700;font-variant-numeric:tabular-nums}
+.r-sub{font-size:.8rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.del{grid-row:1/3;grid-column:2;align-self:center;padding:6px 10px;font-size:.8rem;color:var(--muted)}
+.del.confirm{color:var(--stop);border-color:var(--stop)}
+.empty{color:var(--muted);font-size:.9rem;padding:8px 0}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Stride Log</h1>
+    <span class="small" id="today"></span>
+  </header>
+
+  <section class="lane" id="lane" aria-label="Current run">
+    <div class="status"><span class="dot"></span><span id="statusText">Ready</span></div>
+    <div class="clock" id="clock" aria-live="off">00:00:00</div>
+    <div class="stats">
+      <div class="stat"><b id="sDist">0.00</b><span>km</span></div>
+      <div class="stat"><b id="sPace">--:--</b><span>min / km</span></div>
+      <div class="stat"><b id="sKcal">0</b><span>kcal</span></div>
+    </div>
+  </section>
+
+  <div class="controls" id="controls">
+    <button class="primary solo" id="startBtn" type="button">Start run</button>
+  </div>
+
+  <section class="panel" aria-label="Distance and weight">
+    <div class="gps">
+      <h2>Distance</h2>
+      <span class="chip" id="gpsChip">GPS off</span>
+    </div>
+    <div class="row">
+      <label for="distIn">Distance (km)
+        <input id="distIn" type="number" inputmode="decimal" min="0" step="0.01" placeholder="Auto from GPS">
+      </label>
+      <label for="weightIn">Your weight (kg)
+        <input id="weightIn" type="number" inputmode="decimal" min="25" max="300" step="0.5" value="70">
+      </label>
+    </div>
+    <p class="small" style="margin:0">GPS fills distance while you run, if your browser allows location. You can type or correct it any time. Weight is used for calories.</p>
+  </section>
+
+  <section class="panel" aria-label="This week">
+    <h2>Last 7 days</h2>
+    <div class="week">
+      <div><b id="wRuns">0</b><span>runs</span></div>
+      <div><b id="wDist">0.0</b><span>km</span></div>
+      <div><b id="wKcal">0</b><span>kcal</span></div>
+    </div>
+  </section>
+
+  <section class="panel" aria-label="History">
+    <h2>Run history</h2>
+    <ul id="list"></ul>
+  </section>
+
+  <p class="small">Calories use standard running MET values by speed (Compendium of Physical Activities) × weight × time. Treat them as an estimate. Data stays on this device.</p>
+</div>
+
+<script>
+(function(){
+  const KEY_RUNS="stridelog.runs", KEY_W="stridelog.weight", KEY_CUR="stridelog.current";
+  const $=id=>document.getElementById(id);
+  const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},
+               set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+
+  // MET by speed (km/h), jogging/running values
+  const MET=[[0,1.3],[4,3.5],[6.4,6],[8,8.3],[8.4,9],[9.7,9.8],[10.8,10.5],[11.3,11],[12.1,11.8],[12.9,12.3],[13.8,12.8],[14.5,14.5],[16.1,16],[17.7,19],[19.3,19.8]];
+  function metFor(kmh){
+    if(!(kmh>0)) return 7; // general jogging if distance unknown
+    if(kmh>=MET[MET.length-1][0]) return MET[MET.length-1][1];
+    for(let i=1;i<MET.length;i++){const[a,ma]=MET[i-1],[b,mb]=MET[i];if(kmh<=b)return ma+(mb-ma)*(kmh-a)/(b-a)}
+    return 7;
+  }
+  function kcal(sec,km,kg){const h=sec/3600;if(h<=0)return 0;return metFor(km/h)*kg*h}
+  const fmtClock=s=>{s=Math.floor(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return[h,m,x].map(n=>String(n).padStart(2,"0")).join(":")};
+  const fmtDur=s=>{s=Math.round(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return h?`${h}:${String(m).padStart(2,"0")}:${String(x).padStart(2,"0")}`:`${m}:${String(x).padStart(2,"0")}`};
+  const fmtPace=(s,km)=>{if(!(km>0.01)||!(s>0))return"--:--";const p=s/km;if(p>5999)return"--:--";return`${Math.floor(p/60)}:${String(Math.round(p%60)).padStart(2,"0")}`.replace(/:60$/,":59")};
+
+  let runs=store.get(KEY_RUNS,[]);
+  // cur: {state:'idle'|'running'|'paused', startedAt, elapsedBefore, resumedAt, gpsKm, manualKm}
+  let cur=store.get(KEY_CUR,null)||{state:"idle"};
+  $("weightIn").value=store.get(KEY_W,70);
+  $("today").textContent=new Date().toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"short"});
+
+  const weight=()=>{const w=parseFloat($("weightIn").value);return w>20&&w<400?w:70};
+  const elapsed=()=>cur.state==="running"?cur.elapsedBefore+(Date.now()-cur.resumedAt)/1000:(cur.elapsedBefore||0);
+  const distance=()=>{const m=parseFloat($("distIn").value);return m>=0&&$("distIn").value!==""?m:(cur.gpsKm||0)};
+  const saveCur=()=>store.set(KEY_CUR,cur);
+
+  // ---- GPS ----
+  let watchId=null,last=null;
+  function hav(a,b){const R=6371,r=x=>x*Math.PI/180,dLa=r(b.lat-a.lat),dLo=r(b.lon-a.lon);
+    const h=Math.sin(dLa/2)**2+Math.cos(r(a.lat))*Math.cos(r(b.lat))*Math.sin(dLo/2)**2;return 2*R*Math.asin(Math.sqrt(h))}
+  function gpsChip(text,on){$("gpsChip").textContent=text;$("gpsChip").classList.toggle("on",!!on)}
+  function startGps(){
+    if(!("geolocation" in navigator)){gpsChip("No GPS — type distance");return}
+    try{
+      watchId=navigator.geolocation.watchPosition(p=>{
+        const pt={lat:p.coords.latitude,lon:p.coords.longitude,acc:p.coords.accuracy};
+        if(pt.acc>35){gpsChip("GPS weak ("+Math.round(pt.acc)+" m)",false);return}
+        gpsChip("GPS on",true);
+        if(cur.state!=="running"){last=pt;return}
+        if(last){const d=hav(last,pt);if(d>0.004&&d<0.2){cur.gpsKm=(cur.gpsKm||0)+d;saveCur()} if(d>=0.004)last=pt}else last=pt;
+      },err=>{gpsChip(err.code===1?"GPS blocked — type distance":"GPS unavailable",false)},
+      {enableHighAccuracy:true,maximumAge:2000,timeout:20000});
+    }catch(e){gpsChip("GPS unavailable",false)}
+  }
+  function stopGps(){if(watchId!=null){try{navigator.geolocation.clearWatch(watchId)}catch(e){}}watchId=null;last=null;if(cur.state==="idle")gpsChip("GPS off")}
+
+  // ---- screen wake lock ----
+  let lock=null;
+  async function wake(on){try{if(on&&"wakeLock" in navigator&&!lock){lock=await navigator.wakeLock.request("screen");lock.addEventListener("release",()=>lock=null)}else if(!on&&lock){await lock.release();lock=null}}catch(e){}}
+  document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&cur.state==="running")wake(true)});
+
+  // ---- controls ----
+  function renderControls(){
+    const c=$("controls");c.innerHTML="";
+    const b=(txt,cls,fn)=>{const x=document.createElement("button");x.type="button";x.className=cls;x.textContent=txt;x.onclick=fn;c.appendChild(x);return x};
+    const lane=$("lane");lane.classList.toggle("running",cur.state==="running");lane.classList.toggle("paused",cur.state==="paused");
+    if(cur.state==="idle"){b("Start run","primary solo",start);$("statusText").textContent="Ready"}
+    else if(cur.state==="running"){b("Pause","",pause);b("Finish","danger",finish);$("statusText").textContent="Running"}
+    else{b("Resume","primary",resume);b("Finish","danger",finish);$("statusText").textContent="Paused"}
+    if(cur.state!=="idle"){const d=b("Discard this run","solo small",discard);d.style.fontSize=".85rem";d.style.padding="8px"}
+  }
+  function start(){cur={state:"running",startedAt:Date.now(),elapsedBefore:0,resumedAt:Date.now(),gpsKm:0};$("distIn").value="";saveCur();startGps();wake(true);renderControls();tick()}
+  function pause(){cur.elapsedBefore=elapsed();cur.state="paused";saveCur();wake(false);renderControls();tick()}
+  function resume(){cur.state="running";cur.resumedAt=Date.now();last=null;saveCur();wake(true);renderControls()}
+  let discardArmed=false;
+  function discard(e){
+    if(!discardArmed){discardArmed=true;e.target.textContent="Tap again to discard";setTimeout(()=>{discardArmed=false;if(e.target.isConnected)e.target.textContent="Discard this run"},3000);return}
+    discardArmed=false;cur={state:"idle"};saveCur();stopGps();wake(false);$("distIn").value="";renderControls();tick()
+  }
+  function finish(){
+    const sec=elapsed(),km=distance(),w=weight();
+    if(sec<5){discardArmed=true;discard({target:{}});return}
+    runs.unshift({id:Date.now(),date:cur.startedAt,sec:Math.round(sec),km:Math.round(km*100)/100,kcal:Math.round(kcal(sec,km,w)),kg:w});
+    store.set(KEY_RUNS,runs);
+    cur={state:"idle"};saveCur();stopGps();wake(false);$("distIn").value="";renderControls();tick();renderHistory();
+  }
+
+  // ---- live display ----
+  function tick(){
+    const s=elapsed(),km=distance();
+    $("clock").textContent=fmtClock(s);
+    $("sDist").textContent=km.toFixed(2);
+    $("sPace").textContent=fmtPace(s,km);
+    $("sKcal").textContent=Math.round(kcal(s,km,weight()));
+    if($("distIn").value===""&&cur.gpsKm) $("distIn").placeholder=cur.gpsKm.toFixed(2)+" (GPS)";
+  }
+  setInterval(()=>{if(cur.state==="running")tick()},250);
+  $("distIn").addEventListener("input",tick);
+  $("weightIn").addEventListener("change",()=>{store.set(KEY_W,weight());tick()});
+
+  // ---- history ----
+  function renderHistory(){
+    const ul=$("list");ul.innerHTML="";
+    if(!runs.length){const li=document.createElement("li");li.className="empty";li.style.display="block";li.textContent="No runs yet. Tap Start run, then Finish to save your first one here.";ul.appendChild(li)}
+    runs.forEach(r=>{
+      const li=document.createElement("li");
+      const d=new Date(r.date);
+      const main=document.createElement("div");main.className="r-main";
+      main.textContent=`${r.km.toFixed(2)} km · ${fmtDur(r.sec)}`;
+      const sub=document.createElement("div");sub.className="r-sub";
+      sub.textContent=`${d.toLocaleDateString(undefined,{weekday:"short",day:"numeric",month:"short"})}, ${d.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"})} · ${fmtPace(r.sec,r.km)} /km · ${r.kcal} kcal`;
+      const del=document.createElement("button");del.type="button";del.className="del";del.textContent="Delete";
+      let armed=false;
+      del.onclick=()=>{if(!armed){armed=true;del.textContent="Confirm";del.classList.add("confirm");setTimeout(()=>{armed=false;if(del.isConnected){del.textContent="Delete";del.classList.remove("confirm")}},3000);return}
+        runs=runs.filter(x=>x.id!==r.id);store.set(KEY_RUNS,runs);renderHistory()};
+      li.append(main,del,sub);ul.appendChild(li);
+    });
+    const wk=Date.now()-7*864e5,recent=runs.filter(r=>r.date>=wk);
+    $("wRuns").textContent=recent.length;
+    $("wDist").textContent=recent.reduce((a,r)=>a+r.km,0).toFixed(1);
+    $("wKcal").textContent=recent.reduce((a,r)=>a+r.kcal,0).toLocaleString();
+  }
+
+  // restore an in-progress run after reload
+  if(cur.state==="running"){startGps();wake(true)}
+  renderControls();tick();renderHistory();
+})();
+</script>
+
+<script>if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(function(){})}</script></body></html>
