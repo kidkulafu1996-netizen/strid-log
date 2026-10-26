@@ -3,28 +3,35 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="theme-color" content="#17694f">
 <style>
-/* Layout: one narrow column — stopwatch "lane" on top, controls, then run history. System fonts only so it works offline. */
+/* Layout: one narrow column with a Run / Food switch at top. Run = stopwatch lane + history. Food = today's deficit card, meals, week bars. System fonts only so it works offline. */
 :root{
   --bg:#f3f5f1; --surface:#ffffff; --ink:#18221d; --muted:#5d6b63; --line:#d9e0da;
   --accent:#17694f; --accent-ink:#ffffff; --stop:#b8462e; --lane:rgba(23,105,79,.07);
+  --good:#17694f; --over:#b8462e; --track:#e6ebe7;
   --f-num:"Roboto Condensed","Arial Narrow","Helvetica Neue",ui-sans-serif,system-ui,sans-serif;
   --f-body:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#0f1512; --surface:#18201c; --ink:#e7eee9; --muted:#93a39a; --line:#2a3530;
-  --accent:#3fb98c; --accent-ink:#06130d; --stop:#e0745a; --lane:rgba(63,185,140,.08); color-scheme:dark}}
+  --accent:#3fb98c; --accent-ink:#06130d; --stop:#e0745a; --lane:rgba(63,185,140,.08);
+  --good:#3fb98c; --over:#e0745a; --track:#24302a; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0f1512; --surface:#18201c; --ink:#e7eee9; --muted:#93a39a; --line:#2a3530;
-  --accent:#3fb98c; --accent-ink:#06130d; --stop:#e0745a; --lane:rgba(63,185,140,.08); color-scheme:dark}
+  --accent:#3fb98c; --accent-ink:#06130d; --stop:#e0745a; --lane:rgba(63,185,140,.08);
+  --good:#3fb98c; --over:#e0745a; --track:#24302a; color-scheme:dark}
 
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px 40px}
 .wrap{max-width:520px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
-header{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.view{display:flex;flex-direction:column;gap:18px}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
 h1{font-family:var(--f-num);font-weight:700;font-size:1.6rem;letter-spacing:.02em;margin:0;text-transform:uppercase}
 h2{font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0;font-weight:600}
 .small{font-size:.82rem;color:var(--muted)}
+.tabs{display:grid;grid-template-columns:1fr 1fr;background:var(--track);border-radius:10px;padding:3px;gap:3px}
+.tabs button{border:0;background:transparent;padding:9px;font-size:.95rem;border-radius:8px;color:var(--muted)}
+.tabs button[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.12)}
 
 .lane{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px 18px 18px;
   background-image:repeating-linear-gradient(90deg,transparent 0 23%,var(--lane) 23% 24%);display:flex;flex-direction:column;gap:16px}
@@ -34,26 +41,25 @@ h2{font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;color:var(--mu
 .paused .dot{background:var(--stop)}
 @keyframes pulse{50%{opacity:.3}}
 @media (prefers-reduced-motion:reduce){.running .dot{animation:none}}
-.clock{font-family:var(--f-num);font-weight:700;font-size:clamp(3.6rem,19vw,5.6rem);line-height:1;text-align:center;
-  font-variant-numeric:tabular-nums;letter-spacing:.01em}
+.clock{font-family:var(--f-num);font-weight:700;font-size:clamp(3.6rem,19vw,5.6rem);line-height:1;text-align:center;font-variant-numeric:tabular-nums}
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}
 .stat b{display:block;font-family:var(--f-num);font-size:1.7rem;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
 .stat span{font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
 
 .controls{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-button{font:inherit;font-weight:600;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);
-  padding:14px 12px;cursor:pointer;font-size:1rem}
-button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+button{font:inherit;font-weight:600;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:14px 12px;cursor:pointer;font-size:1rem}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-size:1.15rem}
 .danger{color:var(--stop);border-color:var(--stop)}
 .solo{grid-column:1/-1}
-button:disabled{opacity:.4;cursor:default}
+.ghost{padding:8px 12px;font-size:.88rem}
 
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-label{display:flex;flex-direction:column;gap:4px;font-size:.8rem;color:var(--muted);font-weight:600}
-input{font:inherit;font-size:1.05rem;padding:10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);width:100%;min-width:0;font-variant-numeric:tabular-nums}
-.gps{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.row3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+label{display:flex;flex-direction:column;gap:4px;font-size:.8rem;color:var(--muted);font-weight:600;min-width:0}
+input,select{font:inherit;font-size:1.05rem;padding:10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);width:100%;min-width:0;font-variant-numeric:tabular-nums}
+.between{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
 .chip{font-size:.75rem;padding:3px 9px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
 .chip.on{color:var(--accent);border-color:var(--accent)}
 
@@ -63,13 +69,43 @@ input{font:inherit;font-size:1.05rem;padding:10px;border-radius:8px;border:1px s
 .week span{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
 
 ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
-li{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:12px 0;border-top:1px solid var(--line)}
+li{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:11px 0;border-top:1px solid var(--line);align-items:center}
 li:first-child{border-top:0}
 .r-main{font-family:var(--f-num);font-size:1.15rem;font-weight:700;font-variant-numeric:tabular-nums}
 .r-sub{font-size:.8rem;color:var(--muted);font-variant-numeric:tabular-nums}
-.del{grid-row:1/3;grid-column:2;align-self:center;padding:6px 10px;font-size:.8rem;color:var(--muted)}
+.del{grid-row:1/3;grid-column:2;padding:6px 10px;font-size:.8rem;color:var(--muted)}
 .del.confirm{color:var(--stop);border-color:var(--stop)}
-.empty{color:var(--muted);font-size:.9rem;padding:8px 0}
+.empty{color:var(--muted);font-size:.9rem;padding:6px 0;display:block}
+
+/* Food */
+.daynav{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px;text-align:center}
+.daynav button{padding:8px 14px}
+.daynav strong{font-size:1rem}
+.big{font-family:var(--f-num);font-weight:700;font-size:clamp(3rem,15vw,4.4rem);line-height:1;text-align:center;font-variant-numeric:tabular-nums}
+.big.over{color:var(--over)} .big.good{color:var(--good)}
+.biglabel{text-align:center;font-size:.85rem;color:var(--muted);margin-top:-6px}
+.bar{height:10px;border-radius:99px;background:var(--track);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:99px;transition:width .3s}
+.bar i.over{background:var(--over)}
+.eq{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center}
+.eq b{display:block;font-family:var(--f-num);font-size:1.25rem;font-variant-numeric:tabular-nums}
+.eq span{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.meal-head{display:flex;justify-content:space-between;align-items:baseline}
+.meal-head b{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+.results{display:flex;flex-direction:column;max-height:260px;overflow-y:auto;border:1px solid var(--line);border-radius:8px}
+.results button{border:0;border-bottom:1px solid var(--line);border-radius:0;display:flex;justify-content:space-between;gap:10px;padding:10px 12px;font-weight:500;text-align:left;font-size:.95rem}
+.results button:last-child{border-bottom:0}
+.results button span{color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.results button.picked{background:var(--lane)}
+.chart{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;align-items:end;height:130px;position:relative}
+.chart .col{display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;gap:4px}
+.chart .col i{width:100%;max-width:34px;border-radius:5px 5px 2px 2px;background:var(--good);min-height:3px}
+.chart .col i.over{background:var(--over)} .chart .col i.none{background:var(--track)}
+.chart .col span{font-size:.7rem;color:var(--muted)}
+.chart .col em{font-style:normal;font-size:.68rem;font-variant-numeric:tabular-nums;color:var(--muted)}
+details summary{cursor:pointer;font-weight:600;font-size:.9rem}
+details[open] summary{margin-bottom:12px}
+.note{font-size:.82rem;padding:10px 12px;border-radius:8px;background:var(--track);color:var(--ink)}
 </style>
 
 <div class="wrap">
@@ -77,175 +113,402 @@ li:first-child{border-top:0}
     <h1>Stride Log</h1>
     <span class="small" id="today"></span>
   </header>
-
-  <section class="lane" id="lane" aria-label="Current run">
-    <div class="status"><span class="dot"></span><span id="statusText">Ready</span></div>
-    <div class="clock" id="clock" aria-live="off">00:00:00</div>
-    <div class="stats">
-      <div class="stat"><b id="sDist">0.00</b><span>km</span></div>
-      <div class="stat"><b id="sPace">--:--</b><span>min / km</span></div>
-      <div class="stat"><b id="sKcal">0</b><span>kcal</span></div>
-    </div>
-  </section>
-
-  <div class="controls" id="controls">
-    <button class="primary solo" id="startBtn" type="button">Start run</button>
+  <div class="tabs" role="tablist">
+    <button type="button" role="tab" id="tabRun" aria-selected="true">Run</button>
+    <button type="button" role="tab" id="tabFood" aria-selected="false">Food &amp; deficit</button>
   </div>
 
-  <section class="panel" aria-label="Distance and weight">
-    <div class="gps">
-      <h2>Distance</h2>
-      <span class="chip" id="gpsChip">GPS off</span>
+  <!-- RUN -->
+  <div class="view" id="viewRun">
+    <section class="lane" id="lane" aria-label="Current run">
+      <div class="status"><span class="dot"></span><span id="statusText">Ready</span></div>
+      <div class="clock" id="clock">00:00:00</div>
+      <div class="stats">
+        <div class="stat"><b id="sDist">0.00</b><span>km</span></div>
+        <div class="stat"><b id="sPace">--:--</b><span>min / km</span></div>
+        <div class="stat"><b id="sKcal">0</b><span>kcal</span></div>
+      </div>
+    </section>
+    <div class="controls" id="controls"></div>
+    <section class="panel" aria-label="Distance">
+      <div class="between"><h2>Distance</h2><span class="chip" id="gpsChip">GPS off</span></div>
+      <div class="row">
+        <label for="distIn">Distance (km)
+          <input id="distIn" type="number" inputmode="decimal" min="0" step="0.01" placeholder="Auto from GPS">
+        </label>
+        <label for="weightIn">Your weight (kg)
+          <input id="weightIn" type="number" inputmode="decimal" min="25" max="300" step="0.5" value="70">
+        </label>
+      </div>
+      <p class="small" style="margin:0">GPS fills distance while you run, if your browser allows location. You can type or correct it any time.</p>
+    </section>
+    <section class="panel" aria-label="Last 7 days">
+      <h2>Last 7 days</h2>
+      <div class="week">
+        <div><b id="wRuns">0</b><span>runs</span></div>
+        <div><b id="wDist">0.0</b><span>km</span></div>
+        <div><b id="wKcal">0</b><span>kcal</span></div>
+      </div>
+    </section>
+    <section class="panel" aria-label="Run history">
+      <h2>Run history</h2>
+      <ul id="list"></ul>
+    </section>
+  </div>
+
+  <!-- FOOD -->
+  <div class="view" id="viewFood" hidden>
+    <div class="daynav">
+      <button type="button" class="ghost" id="dayPrev" aria-label="Previous day">‹</button>
+      <strong id="dayLabel">Today</strong>
+      <button type="button" class="ghost" id="dayNext" aria-label="Next day">›</button>
     </div>
-    <div class="row">
-      <label for="distIn">Distance (km)
-        <input id="distIn" type="number" inputmode="decimal" min="0" step="0.01" placeholder="Auto from GPS">
+
+    <section class="panel" aria-label="Daily deficit">
+      <div class="big" id="defBig">0</div>
+      <div class="biglabel" id="defLabel">kcal deficit</div>
+      <div class="bar"><i id="defBar" style="width:0"></i></div>
+      <div class="small" id="defGoalText" style="text-align:center"></div>
+      <div class="eq">
+        <div><b id="eqMaint">0</b><span>Body uses</span></div>
+        <div><b id="eqRun">+0</b><span>Runs</span></div>
+        <div><b id="eqEaten">−0</b><span>Eaten</span></div>
+        <div><b id="eqLeft">0</b><span>Left to eat</span></div>
+      </div>
+    </section>
+
+    <section class="panel" aria-label="Add food">
+      <h2>Add food</h2>
+      <label for="foodSearch">Search
+        <input id="foodSearch" type="search" placeholder="e.g. shawarma, rice, banana" autocomplete="off">
       </label>
-      <label for="weightIn">Your weight (kg)
-        <input id="weightIn" type="number" inputmode="decimal" min="25" max="300" step="0.5" value="70">
-      </label>
-    </div>
-    <p class="small" style="margin:0">GPS fills distance while you run, if your browser allows location. You can type or correct it any time. Weight is used for calories.</p>
-  </section>
+      <div class="results" id="results"></div>
+      <div class="row3">
+        <label for="foodName" style="grid-column:1/-1">Food
+          <input id="foodName" type="text" placeholder="Pick above or type your own">
+        </label>
+        <label for="foodKcal">kcal each
+          <input id="foodKcal" type="number" inputmode="numeric" min="0" step="1">
+        </label>
+        <label for="foodQty">Servings
+          <input id="foodQty" type="number" inputmode="decimal" min="0.25" step="0.25" value="1">
+        </label>
+        <label for="foodMeal">Meal
+          <select id="foodMeal"><option>Breakfast</option><option>Lunch</option><option>Dinner</option><option>Snacks</option></select>
+        </label>
+      </div>
+      <button type="button" class="primary" id="addFood">Add to day</button>
+      <p class="small" id="addMsg" style="margin:0" aria-live="polite">Calories in the list are typical portions. Check the label when you have one.</p>
+    </section>
 
-  <section class="panel" aria-label="This week">
-    <h2>Last 7 days</h2>
-    <div class="week">
-      <div><b id="wRuns">0</b><span>runs</span></div>
-      <div><b id="wDist">0.0</b><span>km</span></div>
-      <div><b id="wKcal">0</b><span>kcal</span></div>
-    </div>
-  </section>
+    <section class="panel" aria-label="Meals">
+      <h2>Meals</h2>
+      <div id="meals" style="display:flex;flex-direction:column;gap:14px"></div>
+    </section>
 
-  <section class="panel" aria-label="History">
-    <h2>Run history</h2>
-    <ul id="list"></ul>
-  </section>
+    <section class="panel" aria-label="Weekly deficit">
+      <div class="between"><h2>Last 7 days</h2><span class="small" id="weekTotal"></span></div>
+      <div class="chart" id="chart"></div>
+      <p class="small" style="margin:0" id="weekNote"></p>
+    </section>
 
-  <p class="small">Calories use standard running MET values by speed (Compendium of Physical Activities) × weight × time. Treat them as an estimate. Data stays on this device.</p>
+    <section class="panel">
+      <details id="profileBox">
+        <summary>Your profile &amp; goal</summary>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div class="row">
+            <label for="pSex">Sex
+              <select id="pSex"><option value="m">Male</option><option value="f">Female</option></select>
+            </label>
+            <label for="pAge">Age
+              <input id="pAge" type="number" inputmode="numeric" min="14" max="100" value="30">
+            </label>
+            <label for="pHeight">Height (cm)
+              <input id="pHeight" type="number" inputmode="numeric" min="120" max="230" value="170">
+            </label>
+            <label for="pWeight">Weight (kg)
+              <input id="pWeight" type="number" inputmode="decimal" min="25" max="300" step="0.5" value="70">
+            </label>
+          </div>
+          <label for="pAct">Everyday activity (not counting runs)
+            <select id="pAct">
+              <option value="1.2">Mostly sitting (desk job)</option>
+              <option value="1.375">Lightly active (on feet some of the day)</option>
+              <option value="1.55">Active (on feet most of the day)</option>
+              <option value="1.725">Very active (physical job)</option>
+            </select>
+          </label>
+          <label for="pGoal">Daily deficit goal
+            <select id="pGoal">
+              <option value="250">250 kcal (about 0.25 kg a week)</option>
+              <option value="500">500 kcal (about 0.5 kg a week)</option>
+              <option value="750">750 kcal (about 0.7 kg a week)</option>
+            </select>
+          </label>
+          <p class="small" style="margin:0" id="bmrText"></p>
+        </div>
+      </details>
+    </section>
+  </div>
+
+  <p class="small">Estimates only. Body use is calculated with the Mifflin–St Jeor formula; run calories use running MET values. About 7,700 kcal of deficit ≈ 1 kg. Data stays on this device.</p>
 </div>
 
 <script>
 (function(){
-  const KEY_RUNS="stridelog.runs", KEY_W="stridelog.weight", KEY_CUR="stridelog.current";
+  const K={runs:"stridelog.runs",w:"stridelog.weight",cur:"stridelog.current",food:"stridelog.food",prof:"stridelog.profile",tab:"stridelog.tab",custom:"stridelog.customFoods"};
   const $=id=>document.getElementById(id);
   const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},
                set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+  const dayKey=t=>{const d=new Date(t);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
+  const fromKey=k=>{const[y,m,d]=k.split("-").map(Number);return new Date(y,m-1,d)};
+  const shiftKey=(k,n)=>{const d=fromKey(k);d.setDate(d.getDate()+n);return dayKey(d)};
+  const num=n=>Math.round(n).toLocaleString();
+  $("today").textContent=new Date().toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"short"});
 
-  // MET by speed (km/h), jogging/running values
+  /* ===== Shared profile ===== */
+  let prof=Object.assign({sex:"m",age:30,height:170,weight:store.get(K.w,70),act:"1.2",goal:"500"},store.get(K.prof,{}));
+  const weight=()=>{const w=parseFloat(prof.weight);return w>20&&w<400?w:70};
+  function saveProf(){store.set(K.prof,prof);store.set(K.w,weight())}
+
+  /* ===== Tabs ===== */
+  function setTab(t){
+    $("viewRun").hidden=t!=="run";$("viewFood").hidden=t!=="food";
+    $("tabRun").setAttribute("aria-selected",t==="run");$("tabFood").setAttribute("aria-selected",t==="food");
+    store.set(K.tab,t); if(t==="food")renderFood();
+  }
+  $("tabRun").onclick=()=>setTab("run");$("tabFood").onclick=()=>setTab("food");
+
+  /* ===== RUN ===== */
   const MET=[[0,1.3],[4,3.5],[6.4,6],[8,8.3],[8.4,9],[9.7,9.8],[10.8,10.5],[11.3,11],[12.1,11.8],[12.9,12.3],[13.8,12.8],[14.5,14.5],[16.1,16],[17.7,19],[19.3,19.8]];
   function metFor(kmh){
-    if(!(kmh>0)) return 7; // general jogging if distance unknown
-    if(kmh>=MET[MET.length-1][0]) return MET[MET.length-1][1];
+    if(!(kmh>0))return 7;
+    if(kmh>=MET[MET.length-1][0])return MET[MET.length-1][1];
     for(let i=1;i<MET.length;i++){const[a,ma]=MET[i-1],[b,mb]=MET[i];if(kmh<=b)return ma+(mb-ma)*(kmh-a)/(b-a)}
     return 7;
   }
-  function kcal(sec,km,kg){const h=sec/3600;if(h<=0)return 0;return metFor(km/h)*kg*h}
-  const fmtClock=s=>{s=Math.floor(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return[h,m,x].map(n=>String(n).padStart(2,"0")).join(":")};
+  const kcalRun=(sec,km,kg)=>{const h=sec/3600;return h>0?metFor(km/h)*kg*h:0};
+  const fmtClock=s=>{s=Math.floor(s);return[Math.floor(s/3600),Math.floor(s%3600/60),s%60].map(n=>String(n).padStart(2,"0")).join(":")};
   const fmtDur=s=>{s=Math.round(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return h?`${h}:${String(m).padStart(2,"0")}:${String(x).padStart(2,"0")}`:`${m}:${String(x).padStart(2,"0")}`};
-  const fmtPace=(s,km)=>{if(!(km>0.01)||!(s>0))return"--:--";const p=s/km;if(p>5999)return"--:--";return`${Math.floor(p/60)}:${String(Math.round(p%60)).padStart(2,"0")}`.replace(/:60$/,":59")};
+  const fmtPace=(s,km)=>{if(!(km>0.01)||!(s>0))return"--:--";const p=s/km;if(p>5999)return"--:--";let m=Math.floor(p/60),x=Math.round(p%60);if(x===60){m++;x=0}return`${m}:${String(x).padStart(2,"0")}`};
 
-  let runs=store.get(KEY_RUNS,[]);
-  // cur: {state:'idle'|'running'|'paused', startedAt, elapsedBefore, resumedAt, gpsKm, manualKm}
-  let cur=store.get(KEY_CUR,null)||{state:"idle"};
-  $("weightIn").value=store.get(KEY_W,70);
-  $("today").textContent=new Date().toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"short"});
-
-  const weight=()=>{const w=parseFloat($("weightIn").value);return w>20&&w<400?w:70};
+  let runs=store.get(K.runs,[]);
+  let cur=store.get(K.cur,null)||{state:"idle"};
+  $("weightIn").value=weight();
   const elapsed=()=>cur.state==="running"?cur.elapsedBefore+(Date.now()-cur.resumedAt)/1000:(cur.elapsedBefore||0);
-  const distance=()=>{const m=parseFloat($("distIn").value);return m>=0&&$("distIn").value!==""?m:(cur.gpsKm||0)};
-  const saveCur=()=>store.set(KEY_CUR,cur);
+  const distance=()=>{const v=$("distIn").value,m=parseFloat(v);return v!==""&&m>=0?m:(cur.gpsKm||0)};
+  const saveCur=()=>store.set(K.cur,cur);
 
-  // ---- GPS ----
   let watchId=null,last=null;
   function hav(a,b){const R=6371,r=x=>x*Math.PI/180,dLa=r(b.lat-a.lat),dLo=r(b.lon-a.lon);
     const h=Math.sin(dLa/2)**2+Math.cos(r(a.lat))*Math.cos(r(b.lat))*Math.sin(dLo/2)**2;return 2*R*Math.asin(Math.sqrt(h))}
-  function gpsChip(text,on){$("gpsChip").textContent=text;$("gpsChip").classList.toggle("on",!!on)}
+  function gpsChip(t,on){$("gpsChip").textContent=t;$("gpsChip").classList.toggle("on",!!on)}
   function startGps(){
     if(!("geolocation" in navigator)){gpsChip("No GPS — type distance");return}
-    try{
-      watchId=navigator.geolocation.watchPosition(p=>{
+    try{watchId=navigator.geolocation.watchPosition(p=>{
         const pt={lat:p.coords.latitude,lon:p.coords.longitude,acc:p.coords.accuracy};
-        if(pt.acc>35){gpsChip("GPS weak ("+Math.round(pt.acc)+" m)",false);return}
+        if(pt.acc>35){gpsChip("GPS weak ("+Math.round(pt.acc)+" m)");return}
         gpsChip("GPS on",true);
         if(cur.state!=="running"){last=pt;return}
-        if(last){const d=hav(last,pt);if(d>0.004&&d<0.2){cur.gpsKm=(cur.gpsKm||0)+d;saveCur()} if(d>=0.004)last=pt}else last=pt;
-      },err=>{gpsChip(err.code===1?"GPS blocked — type distance":"GPS unavailable",false)},
-      {enableHighAccuracy:true,maximumAge:2000,timeout:20000});
-    }catch(e){gpsChip("GPS unavailable",false)}
+        if(last){const d=hav(last,pt);if(d>0.004&&d<0.2){cur.gpsKm=(cur.gpsKm||0)+d;saveCur()}if(d>=0.004)last=pt}else last=pt;
+      },err=>gpsChip(err.code===1?"GPS blocked — type distance":"GPS unavailable"),
+      {enableHighAccuracy:true,maximumAge:2000,timeout:20000})}catch(e){gpsChip("GPS unavailable")}
   }
-  function stopGps(){if(watchId!=null){try{navigator.geolocation.clearWatch(watchId)}catch(e){}}watchId=null;last=null;if(cur.state==="idle")gpsChip("GPS off")}
+  function stopGps(){if(watchId!=null){try{navigator.geolocation.clearWatch(watchId)}catch(e){}}watchId=null;last=null;gpsChip("GPS off")}
 
-  // ---- screen wake lock ----
   let lock=null;
   async function wake(on){try{if(on&&"wakeLock" in navigator&&!lock){lock=await navigator.wakeLock.request("screen");lock.addEventListener("release",()=>lock=null)}else if(!on&&lock){await lock.release();lock=null}}catch(e){}}
   document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&cur.state==="running")wake(true)});
 
-  // ---- controls ----
+  function armButton(btn,label,armedLabel,action){
+    let armed=false;
+    btn.onclick=()=>{if(!armed){armed=true;btn.textContent=armedLabel;btn.classList.add("confirm");
+      setTimeout(()=>{armed=false;if(btn.isConnected){btn.textContent=label;btn.classList.remove("confirm")}},3000);return}action()};
+  }
   function renderControls(){
     const c=$("controls");c.innerHTML="";
-    const b=(txt,cls,fn)=>{const x=document.createElement("button");x.type="button";x.className=cls;x.textContent=txt;x.onclick=fn;c.appendChild(x);return x};
+    const b=(txt,cls,fn)=>{const x=document.createElement("button");x.type="button";x.className=cls;x.textContent=txt;if(fn)x.onclick=fn;c.appendChild(x);return x};
     const lane=$("lane");lane.classList.toggle("running",cur.state==="running");lane.classList.toggle("paused",cur.state==="paused");
     if(cur.state==="idle"){b("Start run","primary solo",start);$("statusText").textContent="Ready"}
-    else if(cur.state==="running"){b("Pause","",pause);b("Finish","danger",finish);$("statusText").textContent="Running"}
-    else{b("Resume","primary",resume);b("Finish","danger",finish);$("statusText").textContent="Paused"}
-    if(cur.state!=="idle"){const d=b("Discard this run","solo small",discard);d.style.fontSize=".85rem";d.style.padding="8px"}
+    else{
+      if(cur.state==="running"){b("Pause","",pause);$("statusText").textContent="Running"}
+      else{b("Resume","primary",resume);$("statusText").textContent="Paused"}
+      b("Finish","danger",finish);
+      const d=b("Discard this run","solo ghost");armButton(d,"Discard this run","Tap again to discard",reset);
+    }
   }
-  function start(){cur={state:"running",startedAt:Date.now(),elapsedBefore:0,resumedAt:Date.now(),gpsKm:0};$("distIn").value="";saveCur();startGps();wake(true);renderControls();tick()}
+  function start(){cur={state:"running",startedAt:Date.now(),elapsedBefore:0,resumedAt:Date.now(),gpsKm:0};$("distIn").value="";$("distIn").placeholder="Auto from GPS";saveCur();startGps();wake(true);renderControls();tick()}
   function pause(){cur.elapsedBefore=elapsed();cur.state="paused";saveCur();wake(false);renderControls();tick()}
   function resume(){cur.state="running";cur.resumedAt=Date.now();last=null;saveCur();wake(true);renderControls()}
-  let discardArmed=false;
-  function discard(e){
-    if(!discardArmed){discardArmed=true;e.target.textContent="Tap again to discard";setTimeout(()=>{discardArmed=false;if(e.target.isConnected)e.target.textContent="Discard this run"},3000);return}
-    discardArmed=false;cur={state:"idle"};saveCur();stopGps();wake(false);$("distIn").value="";renderControls();tick()
-  }
+  function reset(){cur={state:"idle"};saveCur();stopGps();wake(false);$("distIn").value="";renderControls();tick()}
   function finish(){
     const sec=elapsed(),km=distance(),w=weight();
-    if(sec<5){discardArmed=true;discard({target:{}});return}
-    runs.unshift({id:Date.now(),date:cur.startedAt,sec:Math.round(sec),km:Math.round(km*100)/100,kcal:Math.round(kcal(sec,km,w)),kg:w});
-    store.set(KEY_RUNS,runs);
-    cur={state:"idle"};saveCur();stopGps();wake(false);$("distIn").value="";renderControls();tick();renderHistory();
+    if(sec<5){reset();return}
+    runs.unshift({id:Date.now(),date:cur.startedAt,sec:Math.round(sec),km:Math.round(km*100)/100,kcal:Math.round(kcalRun(sec,km,w)),kg:w});
+    store.set(K.runs,runs);reset();renderHistory();
   }
-
-  // ---- live display ----
   function tick(){
     const s=elapsed(),km=distance();
-    $("clock").textContent=fmtClock(s);
-    $("sDist").textContent=km.toFixed(2);
-    $("sPace").textContent=fmtPace(s,km);
-    $("sKcal").textContent=Math.round(kcal(s,km,weight()));
-    if($("distIn").value===""&&cur.gpsKm) $("distIn").placeholder=cur.gpsKm.toFixed(2)+" (GPS)";
+    $("clock").textContent=fmtClock(s);$("sDist").textContent=km.toFixed(2);
+    $("sPace").textContent=fmtPace(s,km);$("sKcal").textContent=Math.round(kcalRun(s,km,weight()));
+    if($("distIn").value===""&&cur.gpsKm)$("distIn").placeholder=cur.gpsKm.toFixed(2)+" (GPS)";
   }
   setInterval(()=>{if(cur.state==="running")tick()},250);
   $("distIn").addEventListener("input",tick);
-  $("weightIn").addEventListener("change",()=>{store.set(KEY_W,weight());tick()});
+  $("weightIn").addEventListener("change",()=>{prof.weight=parseFloat($("weightIn").value)||70;saveProf();$("pWeight").value=weight();tick()});
 
-  // ---- history ----
   function renderHistory(){
     const ul=$("list");ul.innerHTML="";
-    if(!runs.length){const li=document.createElement("li");li.className="empty";li.style.display="block";li.textContent="No runs yet. Tap Start run, then Finish to save your first one here.";ul.appendChild(li)}
+    if(!runs.length){const li=document.createElement("li");li.className="empty";li.textContent="No runs yet. Tap Start run, then Finish to save your first one here.";ul.appendChild(li)}
     runs.forEach(r=>{
-      const li=document.createElement("li");
-      const d=new Date(r.date);
-      const main=document.createElement("div");main.className="r-main";
-      main.textContent=`${r.km.toFixed(2)} km · ${fmtDur(r.sec)}`;
+      const li=document.createElement("li"),d=new Date(r.date);
+      const main=document.createElement("div");main.className="r-main";main.textContent=`${r.km.toFixed(2)} km · ${fmtDur(r.sec)}`;
       const sub=document.createElement("div");sub.className="r-sub";
       sub.textContent=`${d.toLocaleDateString(undefined,{weekday:"short",day:"numeric",month:"short"})}, ${d.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"})} · ${fmtPace(r.sec,r.km)} /km · ${r.kcal} kcal`;
       const del=document.createElement("button");del.type="button";del.className="del";del.textContent="Delete";
-      let armed=false;
-      del.onclick=()=>{if(!armed){armed=true;del.textContent="Confirm";del.classList.add("confirm");setTimeout(()=>{armed=false;if(del.isConnected){del.textContent="Delete";del.classList.remove("confirm")}},3000);return}
-        runs=runs.filter(x=>x.id!==r.id);store.set(KEY_RUNS,runs);renderHistory()};
+      armButton(del,"Delete","Confirm",()=>{runs=runs.filter(x=>x.id!==r.id);store.set(K.runs,runs);renderHistory()});
       li.append(main,del,sub);ul.appendChild(li);
     });
     const wk=Date.now()-7*864e5,recent=runs.filter(r=>r.date>=wk);
     $("wRuns").textContent=recent.length;
     $("wDist").textContent=recent.reduce((a,r)=>a+r.km,0).toFixed(1);
-    $("wKcal").textContent=recent.reduce((a,r)=>a+r.kcal,0).toLocaleString();
+    $("wKcal").textContent=num(recent.reduce((a,r)=>a+r.kcal,0));
   }
 
-  // restore an in-progress run after reload
+  /* ===== FOOD ===== */
+  const FOODS=[
+    ["Arabic bread / pita (1 medium)",165],["Chicken shawarma wrap",550],["Beef shawarma wrap",600],["Falafel (4 pieces)",230],
+    ["Falafel sandwich",400],["Hummus (3 tbsp)",130],["Mutabal (3 tbsp)",100],["Labneh (2 tbsp)",60],["Fattoush (1 bowl)",180],
+    ["Tabbouleh (1 bowl)",150],["Manakish zaatar (1)",450],["Manakish cheese (1)",520],["Chicken machboos (1 plate)",650],
+    ["Chicken biryani (1 plate)",700],["Mixed grill plate",800],["Lentil soup (1 bowl)",180],["Luqaimat (5 pieces)",250],
+    ["Dates (3)",70],["Karak chai (1 cup)",150],["Arabic coffee (1 cup)",5],["Samosa (1)",260],["Roti / chapati (1)",120],
+    ["Dal with rice (1 plate)",450],["White rice, cooked (1 cup)",205],["Brown rice, cooked (1 cup)",215],["Grilled chicken breast (150 g)",250],
+    ["Grilled fish (150 g)",200],["Salmon fillet (150 g)",310],["Boiled egg (1)",78],["Fried egg (1)",90],["Omelette (2 eggs)",190],
+    ["Oats with milk (1 bowl)",300],["White toast (1 slice)",80],["Butter (1 tsp)",35],["Peanut butter (1 tbsp)",95],["Cheese slice (1)",70],
+    ["Greek yogurt, plain (170 g)",100],["Full-fat milk (1 cup)",150],["Low-fat milk (1 cup)",105],["Banana (1)",105],["Apple (1)",95],
+    ["Orange (1)",62],["Mango (1 cup)",100],["Grapes (1 cup)",105],["Watermelon (2 cups)",90],["Almonds (handful, 28 g)",165],
+    ["Mixed salad with dressing",150],["Pasta with tomato sauce (1 plate)",450],["Pizza (1 slice)",285],["Beef burger",550],
+    ["Chicken burger",480],["Fries (medium)",365],["Fried chicken (2 pieces)",500],["Sushi roll (8 pieces)",350],
+    ["Protein shake (1 scoop, water)",120],["Protein bar",200],["Chocolate bar (45 g)",230],["Ice cream (1 scoop)",140],
+    ["Cookie (1)",80],["Croissant (1)",270],["Black coffee",5],["Cappuccino (medium)",120],["Latte (medium)",190],
+    ["Iced latte with syrup (medium)",250],["Soft drink (1 can)",140],["Fresh orange juice (1 glass)",120],["Laban drink (1 cup)",110]
+  ];
+  let food=store.get(K.food,[]);
+  let customFoods=store.get(K.custom,[]);
+  let viewDay=dayKey(Date.now());
+
+  function bmr(){const w=weight(),h=+prof.height||170,a=+prof.age||30;return 10*w+6.25*h-5*a+(prof.sex==="f"?-161:5)}
+  const maint=()=>bmr()*(+prof.act||1.2);
+  const runKcalOn=k=>runs.filter(r=>dayKey(r.date)===k).reduce((a,r)=>a+r.kcal,0);
+  const eatenOn=k=>food.filter(f=>f.day===k).reduce((a,f)=>a+f.kcal*f.qty,0);
+  const deficitOn=k=>maint()+runKcalOn(k)-eatenOn(k);
+
+  function dayName(k){
+    const t=dayKey(Date.now());if(k===t)return"Today";if(k===shiftKey(t,-1))return"Yesterday";
+    return fromKey(k).toLocaleDateString(undefined,{weekday:"short",day:"numeric",month:"short"});
+  }
+
+  function renderFood(){
+    const k=viewDay,m=maint(),r=runKcalOn(k),e=eatenOn(k),d=m+r-e,goal=+prof.goal||500;
+    $("dayLabel").textContent=dayName(k);
+    $("dayNext").disabled=k>=dayKey(Date.now());
+    $("defBig").textContent=num(Math.abs(d));
+    $("defBig").className="big "+(d>=0?"good":"over");
+    $("defLabel").textContent=d>=0?"kcal deficit":"kcal over (surplus)";
+    const pct=Math.max(0,Math.min(100,d/goal*100));
+    $("defBar").style.width=(d>0?pct:100)+"%";$("defBar").className=d>=0?"":"over";
+    $("defGoalText").textContent=d>=goal?`Goal of ${num(goal)} kcal reached`:d>=0?`${num(goal-d)} kcal more to reach your ${num(goal)} kcal goal`:`Goal: ${num(goal)} kcal deficit`;
+    $("eqMaint").textContent=num(m);$("eqRun").textContent="+"+num(r);$("eqEaten").textContent="−"+num(e);
+    const left=m+r-goal-e;$("eqLeft").textContent=num(Math.max(0,left));
+
+    // meals
+    const box=$("meals");box.innerHTML="";
+    ["Breakfast","Lunch","Dinner","Snacks"].forEach(meal=>{
+      const items=food.filter(f=>f.day===k&&f.meal===meal);
+      const sec=document.createElement("div");
+      const head=document.createElement("div");head.className="meal-head";
+      const h=document.createElement("h2");h.textContent=meal;
+      const tot=document.createElement("b");tot.textContent=num(items.reduce((a,f)=>a+f.kcal*f.qty,0))+" kcal";
+      head.append(h,tot);sec.appendChild(head);
+      const ul=document.createElement("ul");
+      if(!items.length){const li=document.createElement("li");li.className="empty";li.textContent="Nothing logged";ul.appendChild(li)}
+      items.forEach(f=>{
+        const li=document.createElement("li");
+        const a=document.createElement("div");a.style.fontWeight="600";a.style.minWidth="0";a.textContent=f.name;
+        const b=document.createElement("div");b.className="r-sub";b.textContent=`${f.qty} × ${num(f.kcal)} = ${num(f.kcal*f.qty)} kcal`;
+        const del=document.createElement("button");del.type="button";del.className="del";del.textContent="Remove";
+        armButton(del,"Remove","Confirm",()=>{food=food.filter(x=>x.id!==f.id);store.set(K.food,food);renderFood()});
+        li.append(a,del,b);ul.appendChild(li);
+      });
+      sec.appendChild(ul);box.appendChild(sec);
+    });
+
+    // week chart
+    const ch=$("chart");ch.innerHTML="";
+    const t=dayKey(Date.now());let total=0,daysLogged=0;
+    const days=[...Array(7)].map((_,i)=>shiftKey(t,i-6));
+    const vals=days.map(dk=>{const logged=food.some(f=>f.day===dk);const v=logged?deficitOn(dk):null;if(logged){total+=v;daysLogged++}return v});
+    const maxAbs=Math.max(goal,...vals.filter(v=>v!=null).map(Math.abs));
+    days.forEach((dk,i)=>{
+      const v=vals[i],col=document.createElement("div");col.className="col";
+      const em=document.createElement("em");em.textContent=v==null?"–":(v<0?"+":"")+num(Math.abs(v));
+      const bar=document.createElement("i");
+      if(v==null){bar.className="none";bar.style.height="3px"}else{bar.className=v<0?"over":"";bar.style.height=Math.max(3,Math.abs(v)/maxAbs*90)+"px"}
+      const sp=document.createElement("span");sp.textContent=fromKey(dk).toLocaleDateString(undefined,{weekday:"narrow"});
+      if(dk===viewDay)sp.style.fontWeight="700",sp.style.color="var(--ink)";
+      col.append(em,bar,sp);ch.appendChild(col);
+    });
+    $("weekTotal").textContent=daysLogged?`${total>=0?"":"+"}${num(Math.abs(total))} kcal ${total>=0?"deficit":"surplus"}`:"";
+    $("weekNote").textContent=daysLogged?`About ${(Math.abs(total)/7700).toFixed(2)} kg ${total>=0?"lost":"gained"} over ${daysLogged} logged day${daysLogged>1?"s":""}. Green bars are deficit days, red are surplus.`:"Days you log food appear here. Green bars are deficit days, red are surplus.";
+
+    // profile text
+    const floor=prof.sex==="f"?1200:1500,target=m-goal;
+    $("bmrText").textContent=`Resting burn ${num(bmr())} kcal · Everyday use ${num(m)} kcal · To hit your goal, eat about ${num(target)} kcal plus whatever your runs burn.`+(target<floor?` That is below ${floor} kcal, which is lower than generally advised without a doctor's guidance. Consider a smaller goal.`:"");
+  }
+
+  // search
+  function allFoods(){const seen=new Set();return[...customFoods,...FOODS.map(([n,k])=>({name:n,kcal:k}))].filter(f=>{const key=f.name.toLowerCase();if(seen.has(key))return false;seen.add(key);return true})}
+  function renderResults(){
+    const q=$("foodSearch").value.trim().toLowerCase(),box=$("results");box.innerHTML="";
+    const list=allFoods().filter(f=>!q||f.name.toLowerCase().includes(q)).slice(0,q?40:8);
+    box.hidden=!list.length;
+    list.forEach(f=>{
+      const b=document.createElement("button");b.type="button";
+      const n=document.createElement("b");n.style.fontWeight="500";n.textContent=f.name;
+      const s=document.createElement("span");s.textContent=f.kcal+" kcal";
+      b.append(n,s);
+      b.onclick=()=>{$("foodName").value=f.name;$("foodKcal").value=f.kcal;$("foodQty").value=1;
+        box.querySelectorAll(".picked").forEach(x=>x.classList.remove("picked"));b.classList.add("picked");$("addMsg").textContent=`${f.name} selected. Adjust servings, then tap Add to day.`};
+      box.appendChild(b);
+    });
+  }
+  $("foodSearch").addEventListener("input",renderResults);
+  function guessMeal(){const h=new Date().getHours();return h<11?"Breakfast":h<16?"Lunch":h<21?"Dinner":"Snacks"}
+  $("foodMeal").value=guessMeal();
+  $("addFood").onclick=()=>{
+    const name=$("foodName").value.trim(),kcal=parseFloat($("foodKcal").value),qty=parseFloat($("foodQty").value)||1;
+    if(!name){$("addMsg").textContent="Pick a food from the list or type a name.";return}
+    if(!(kcal>=0)){$("addMsg").textContent="Enter the calories for one serving.";$("foodKcal").focus();return}
+    food.push({id:Date.now()+Math.random(),day:viewDay,meal:$("foodMeal").value,name,kcal:Math.round(kcal),qty:Math.round(qty*100)/100});
+    store.set(K.food,food);
+    if(!FOODS.some(([n,k])=>n.toLowerCase()===name.toLowerCase()&&k===Math.round(kcal))){
+      customFoods=[{name,kcal:Math.round(kcal)},...customFoods.filter(f=>f.name.toLowerCase()!==name.toLowerCase())].slice(0,60);store.set(K.custom,customFoods);
+    }
+    $("addMsg").textContent=`Added ${name} to ${$("foodMeal").value}.`;
+    $("foodName").value="";$("foodKcal").value="";$("foodQty").value=1;$("foodSearch").value="";renderResults();renderFood();
+  };
+  $("dayPrev").onclick=()=>{viewDay=shiftKey(viewDay,-1);renderFood()};
+  $("dayNext").onclick=()=>{if(viewDay<dayKey(Date.now())){viewDay=shiftKey(viewDay,1);renderFood()}};
+
+  // profile inputs
+  const pmap={pSex:"sex",pAge:"age",pHeight:"height",pWeight:"weight",pAct:"act",pGoal:"goal"};
+  Object.entries(pmap).forEach(([id,key])=>{$(id).value=prof[key];$(id).addEventListener("change",()=>{prof[key]=$(id).value;saveProf();$("weightIn").value=weight();renderFood()})});
+  if(!store.get(K.prof,null))$("profileBox").open=true;
+
+  // init
   if(cur.state==="running"){startGps();wake(true)}
-  renderControls();tick();renderHistory();
+  renderControls();tick();renderHistory();renderResults();
+  setTab(store.get(K.tab,"run")==="food"?"food":"run");
 })();
 </script>
 
