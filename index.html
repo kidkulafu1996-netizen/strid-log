@@ -105,6 +105,12 @@ li:first-child{border-top:0}
 .chart .col em{font-style:normal;font-size:.68rem;font-variant-numeric:tabular-nums;color:var(--muted)}
 details summary{cursor:pointer;font-weight:600;font-size:.9rem}
 details[open] summary{margin-bottom:12px}
+.plans{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.plan{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:10px;background:var(--bg);border:1px solid var(--line);min-width:0}
+.plan span{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.plan b{font-family:var(--f-num);font-size:1.6rem;font-variant-numeric:tabular-nums;line-height:1.1}
+.plan em{font-style:normal;font-size:.8rem;color:var(--muted)}
+.warn{color:var(--over)}
 .note{font-size:.82rem;padding:10px 12px;border-radius:8px;background:var(--track);color:var(--ink)}
 </style>
 
@@ -177,10 +183,38 @@ details[open] summary{margin-bottom:12px}
       </div>
     </section>
 
+    <section class="panel" aria-label="Target weight">
+      <div class="between"><h2>Target weight</h2><span class="chip on" id="tChip" hidden></span></div>
+      <div class="row">
+        <label for="tCur">Current weight (kg)
+          <input id="tCur" type="number" inputmode="decimal" min="25" max="300" step="0.1">
+        </label>
+        <label for="tTarget">Target weight (kg)
+          <input id="tTarget" type="number" inputmode="decimal" min="30" max="300" step="0.1" placeholder="e.g. 65">
+        </label>
+      </div>
+      <div id="tBody" style="display:flex;flex-direction:column;gap:12px">
+        <div>
+          <div class="between small" style="margin-bottom:6px"><span id="tStart"></span><span id="tProg"></span></div>
+          <div class="bar"><i id="tBar" style="width:0"></i></div>
+        </div>
+        <div class="plans">
+          <div class="plan"><span>At your daily goal</span><b id="pDays">–</b><em id="pDate"></em></div>
+          <div class="plan"><span>At your last 7 days' pace</span><b id="aDays">–</b><em id="aDate"></em></div>
+        </div>
+        <label for="tBy">Or pick a date to reach it
+          <input id="tBy" type="date">
+        </label>
+        <div class="note" id="tByOut" hidden></div>
+        <p class="small" style="margin:0" id="tWarn"></p>
+      </div>
+      <p class="small" id="tEmpty" style="margin:0">Enter a target weight to see how many days it takes and how much to eat each day.</p>
+    </section>
+
     <section class="panel" aria-label="Add food">
       <h2>Add food</h2>
       <label for="foodSearch">Search
-        <input id="foodSearch" type="search" placeholder="e.g. shawarma, rice, banana" autocomplete="off">
+        <input id="foodSearch" type="search" placeholder="e.g. adobo, sinigang, pandesal" autocomplete="off">
       </label>
       <div class="results" id="results"></div>
       <div class="row3">
@@ -377,6 +411,43 @@ details[open] summary{margin-bottom:12px}
 
   /* ===== FOOD ===== */
   const FOODS=[
+    // Filipino — rice & bread
+    ["Garlic rice / sinangag (1 cup)",280],["Plain rice / kanin (1 cup)",205],["Pandesal (1 piece)",110],["Ensaymada (1)",350],
+    ["Spanish bread (1)",200],["Monay (1)",220],["Pan de coco (1)",230],
+    // Silog & breakfast
+    ["Tapsilog (tapa, sinangag, itlog)",750],["Longsilog (longganisa, sinangag, itlog)",800],["Tocilog (tocino, sinangag, itlog)",750],
+    ["Bangsilog (bangus, sinangag, itlog)",650],["Cornsilog (corned beef, sinangag, itlog)",650],["Hotsilog (hotdog, sinangag, itlog)",650],
+    ["Spamsilog (spam, sinangag, itlog)",750],["Chicksilog (chicken, sinangag, itlog)",700],["Beef tapa only (100 g)",250],
+    ["Longganisa (2 pieces)",300],["Tocino only (100 g)",300],["Hotdog (1)",150],["Corned beef, sautéed (½ can)",300],
+    ["Daing na bangus (½ fish)",350],["Tuyo, fried (3 pieces)",150],["Itlog na maalat / salted egg (1)",130],["Champorado (1 bowl)",300],
+    // Ulam (1 serving, no rice)
+    ["Chicken adobo (1 serving)",350],["Pork adobo (1 serving)",450],["Adobong kangkong (1 cup)",120],
+    ["Sinigang na baboy / pork sour soup (1 bowl)",300],["Sinigang na hipon / shrimp sour soup (1 bowl)",180],["Sinigang na bangus (1 bowl)",230],
+    ["Tinola / chicken ginger soup (1 bowl)",220],["Nilagang baka / beef soup (1 bowl)",350],["Bulalo (1 bowl)",500],
+    ["Kare-kare with bagoong (1 serving)",550],["Sisig (1 cup)",550],["Lechon kawali (100 g)",450],["Crispy pata (1 serving)",750],
+    ["Lechon (100 g)",400],["Menudo (1 serving)",350],["Afritada (1 serving)",330],["Mechado (1 serving)",380],["Kaldereta (1 serving)",400],
+    ["Bistek tagalog (1 serving)",350],["Pork giniling (1 serving)",330],["Ginataang manok (1 serving)",400],["Chicken curry, Filipino (1 serving)",380],
+    ["Dinuguan (1 serving)",380],["Paksiw na isda (1 serving)",220],["Pinakbet (1 cup)",180],["Chopsuey (1 cup)",150],
+    ["Ginisang monggo / mung beans (1 cup)",250],["Laing (1 cup)",300],["Ginataang kalabasa at sitaw (1 cup)",220],
+    ["Tortang talong / eggplant omelette (1)",200],["Embutido (2 slices)",250],["Fried bangus (½ fish)",350],["Fried tilapia (1 medium)",300],
+    ["Inihaw na liempo / grilled pork belly (150 g)",520],["Chicken inasal (1 leg quarter)",450],["Pork BBQ (1 stick)",180],
+    ["Fried chicken (1 piece)",300],["Lumpiang shanghai (5 pieces)",300],["Lumpiang sariwa / fresh lumpia (1)",200],["Daing na pusit (1 serving)",200],
+    // Noodles & soups
+    ["Pancit canton (1 plate)",450],["Pancit bihon (1 plate)",350],["Pancit palabok (1 plate)",500],["Pancit malabon (1 plate)",550],
+    ["Filipino spaghetti (1 plate)",500],["Arroz caldo (1 bowl)",300],["Lugaw (1 bowl)",180],["Goto (1 bowl)",300],
+    ["La Paz batchoy (1 bowl)",450],["Mami (1 bowl)",380],["Sopas (1 bowl)",300],["Instant pancit canton (1 pack)",300],["Instant noodles soup (1 pack)",350],
+    // Merienda & street food
+    ["Kwek-kwek (5 pieces)",250],["Fishball (10 pieces)",200],["Isaw (2 sticks)",120],["Banana cue (1 stick)",250],["Turon (1)",220],
+    ["Kamote cue (1 stick)",230],["Siopao asado (1)",350],["Siomai (4 pieces)",200],["Balut (1)",190],["Chicharon (1 cup)",150],
+    ["Puto (2 pieces)",150],["Kutsinta (2 pieces)",150],["Bibingka (1)",300],["Puto bumbong (1 serving)",250],["Biko (1 slice)",300],
+    ["Palitaw (3 pieces)",200],["Maja blanca (1 slice)",200],["Sapin-sapin (1 slice)",220],["Cassava cake (1 slice)",280],
+    ["Halo-halo (1 glass)",450],["Leche flan (1 slice)",250],["Ube halaya (½ cup)",250],["Buko pie (1 slice)",300],["Mango float (1 slice)",350],
+    ["Taho (1 cup)",180],["Polvoron (2 pieces)",140],["Dried mangoes (40 g)",150],
+    // Fruit & drinks
+    ["Mango, ripe carabao (1)",150],["Saba banana, boiled (1)",110],["Lakatan banana (1)",100],["Buko juice / coconut water (1 cup)",45],
+    ["3-in-1 coffee (1 sachet)",110],["Milo (1 sachet)",120],["Sago't gulaman (1 glass)",180],["Calamansi juice, sweetened (1 glass)",100],
+    ["Mango shake (1 glass)",250],["Beer, pale pilsen (1 bottle, 320 ml)",140],["Beer, strong (1 bottle, 500 ml)",260],
+    // Other
     ["Arabic bread / pita (1 medium)",165],["Chicken shawarma wrap",550],["Beef shawarma wrap",600],["Falafel (4 pieces)",230],
     ["Falafel sandwich",400],["Hummus (3 tbsp)",130],["Mutabal (3 tbsp)",100],["Labneh (2 tbsp)",60],["Fattoush (1 bowl)",180],
     ["Tabbouleh (1 bowl)",150],["Manakish zaatar (1)",450],["Manakish cheese (1)",520],["Chicken machboos (1 plate)",650],
@@ -461,16 +532,84 @@ details[open] summary{margin-bottom:12px}
     $("weekTotal").textContent=daysLogged?`${total>=0?"":"+"}${num(Math.abs(total))} kcal ${total>=0?"deficit":"surplus"}`:"";
     $("weekNote").textContent=daysLogged?`About ${(Math.abs(total)/7700).toFixed(2)} kg ${total>=0?"lost":"gained"} over ${daysLogged} logged day${daysLogged>1?"s":""}. Green bars are deficit days, red are surplus.`:"Days you log food appear here. Green bars are deficit days, red are surplus.";
 
+    renderPlan(daysLogged?total/daysLogged:null,daysLogged);
+
     // profile text
     const floor=prof.sex==="f"?1200:1500,target=m-goal;
     $("bmrText").textContent=`Resting burn ${num(bmr())} kcal · Everyday use ${num(m)} kcal · To hit your goal, eat about ${num(target)} kcal plus whatever your runs burn.`+(target<floor?` That is below ${floor} kcal, which is lower than generally advised without a doctor's guidance. Consider a smaller goal.`:"");
   }
 
+  /* ===== Target weight plan ===== */
+  const fmtDate=d=>d.toLocaleDateString(undefined,{day:"numeric",month:"short",year:"numeric"});
+  const addDays=n=>{const d=new Date();d.setHours(12,0,0,0);d.setDate(d.getDate()+n);return d};
+  const dur=n=>n<60?`${n} days`:`${n} days (~${(n/30.4).toFixed(1)} mo)`;
+  function renderPlan(avgDef,daysLogged){
+    const cur=weight(),tgt=parseFloat(prof.target);
+    $("tCur").value=cur;
+    if(!(tgt>0)){$("tBody").hidden=true;$("tEmpty").hidden=false;$("tChip").hidden=true;return}
+    $("tBody").hidden=false;$("tEmpty").hidden=true;
+    const m=maint(),goal=+prof.goal||500,floor=prof.sex==="f"?1200:1500;
+    const diff=cur-tgt,lose=diff>0,kg=Math.abs(diff),total=kg*7700;
+    const start=parseFloat(prof.start)||cur,need=Math.abs(start-tgt),done=lose?start-cur:cur-start;
+    $("tStart").textContent=`Start ${start} kg → ${tgt} kg`;
+    $("tProg").textContent=`${Math.max(0,done).toFixed(1)} of ${need.toFixed(1)} kg ${lose?"lost":"gained"}`;
+    $("tBar").style.width=(need>0?Math.max(0,Math.min(100,done/need*100)):100)+"%";
+    $("tChip").hidden=false;
+
+    if(kg<0.05){
+      $("tChip").textContent="Target reached";
+      $("pDays").textContent="Done";$("pDate").textContent="Nice work";$("aDays").textContent="Done";$("aDate").textContent="";
+      $("tByOut").hidden=true;$("tWarn").textContent="Set a new target, or keep eating around "+num(m)+" kcal a day to stay here.";return;
+    }
+    $("tChip").textContent=`${kg.toFixed(1)} kg to ${lose?"lose":"gain"}`;
+    const word=lose?"deficit":"surplus";
+
+    // A: at the chosen daily goal
+    const dA=Math.ceil(total/goal);
+    $("pDays").textContent=dur(dA);$("pDate").textContent=`${fmtDate(addDays(dA))} · ${num(goal)} kcal ${word}/day`;
+
+    // B: at recent pace
+    const pace=avgDef==null?null:(lose?avgDef:-avgDef);
+    if(daysLogged<2){$("aDays").textContent="–";$("aDate").textContent="Log food for 2+ days to see this"}
+    else if(pace<=20){$("aDays").textContent="Not on track";$("aDate").textContent=`Recent average is a ${lose?"surplus":"deficit"} of ${num(Math.abs(avgDef))} kcal/day`}
+    else{const dB=Math.ceil(total/pace);$("aDays").textContent=dur(dB);$("aDate").textContent=`${fmtDate(addDays(dB))} · avg ${num(pace)} kcal/day`}
+
+    // C: by a chosen date
+    const out=$("tByOut");out.classList.remove("warn");
+    if(prof.by){
+      const days=Math.round((fromKey(prof.by)-fromKey(dayKey(Date.now())))/864e5);
+      out.hidden=false;
+      if(days<=0){out.textContent="Pick a date in the future."}
+      else{
+        const req=total/days,eat=lose?m-req:m+req;
+        const wkRun=runs.filter(r=>r.date>=Date.now()-7*864e5).reduce((a,r)=>a+r.kcal,0)/7;
+        let t=`To reach ${tgt} kg by ${fmtDate(fromKey(prof.by))} (${days} days), you need a ${num(req)} kcal daily ${word}. Eat about ${num(eat)} kcal a day`;
+        t+=wkRun>10?`, or about ${num(eat+wkRun)} kcal on your usual running (~${num(wkRun)} kcal/day lately).`:", plus whatever your runs burn that day.";
+        const safe=lose?750:500;
+        if((lose&&(req>1000||eat<floor))||(!lose&&req>safe)){
+          t+=` That pace is faster than generally advised${lose&&eat<floor?` and means eating below ${floor} kcal`:""}. A safer date at ${safe} kcal/day is ${fmtDate(addDays(Math.ceil(total/safe)))}.`;
+          out.classList.add("warn");
+        }
+        out.textContent=t;
+      }
+    } else out.hidden=true;
+
+    // healthy-range check
+    const h=(+prof.height||170)/100,minW=18.5*h*h;
+    $("tWarn").textContent=tgt<minW?`Your target is below the healthy BMI range for your height (about ${minW.toFixed(1)} kg or more). It's worth checking with a doctor before aiming that low.`
+      :"Estimates use 7,700 kcal ≈ 1 kg. As you lose weight your body burns a little less, so update your current weight every week or so.";
+    $("tWarn").className=tgt<minW?"small warn":"small";
+  }
+  $("tCur").addEventListener("change",()=>{const v=parseFloat($("tCur").value);if(v>20&&v<400){prof.weight=v;saveProf();$("pWeight").value=v;$("weightIn").value=v;renderFood()}});
+  $("tTarget").addEventListener("change",()=>{const v=parseFloat($("tTarget").value);prof.target=v>20&&v<400?v:"";prof.start=weight();saveProf();renderFood()});
+  $("tBy").addEventListener("change",()=>{prof.by=$("tBy").value||"";saveProf();renderFood()});
+
   // search
   function allFoods(){const seen=new Set();return[...customFoods,...FOODS.map(([n,k])=>({name:n,kcal:k}))].filter(f=>{const key=f.name.toLowerCase();if(seen.has(key))return false;seen.add(key);return true})}
   function renderResults(){
     const q=$("foodSearch").value.trim().toLowerCase(),box=$("results");box.innerHTML="";
-    const list=allFoods().filter(f=>!q||f.name.toLowerCase().includes(q)).slice(0,q?40:8);
+    const words=q.split(/\s+/).filter(Boolean),norm=x=>x.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+    const list=allFoods().filter(f=>{const n=norm(f.name);return words.every(w=>n.includes(norm(w)))}).slice(0,q?50:8);
     box.hidden=!list.length;
     list.forEach(f=>{
       const b=document.createElement("button");b.type="button";
@@ -504,6 +643,7 @@ details[open] summary{margin-bottom:12px}
   const pmap={pSex:"sex",pAge:"age",pHeight:"height",pWeight:"weight",pAct:"act",pGoal:"goal"};
   Object.entries(pmap).forEach(([id,key])=>{$(id).value=prof[key];$(id).addEventListener("change",()=>{prof[key]=$(id).value;saveProf();$("weightIn").value=weight();renderFood()})});
   if(!store.get(K.prof,null))$("profileBox").open=true;
+  $("tTarget").value=prof.target||"";$("tBy").value=prof.by||"";$("tBy").min=shiftKey(dayKey(Date.now()),1);
 
   // init
   if(cur.state==="running"){startGps();wake(true)}
