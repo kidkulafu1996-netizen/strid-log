@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}</style><link rel="manifest" href="manifest.json"><link rel="apple-touch-icon" href="icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"></head><body>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}</style><link rel="manifest" href="manifest.json"><link rel="apple-touch-icon" href="icon-fit-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"></head><body>
 <title>Stride Log</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="theme-color" content="#17694f">
@@ -29,7 +29,14 @@ header{display:flex;justify-content:space-between;align-items:center;gap:12px;fl
 h1{font-family:var(--f-num);font-weight:700;font-size:1.6rem;letter-spacing:.02em;margin:0;text-transform:uppercase}
 h2{font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0;font-weight:600}
 .small{font-size:.82rem;color:var(--muted)}
-.tabs{display:grid;grid-template-columns:1fr 1fr;background:var(--track);border-radius:10px;padding:3px;gap:3px}
+.presets{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.presets button{padding:12px 6px;font-family:var(--f-num);font-size:1.1rem}
+#restLane.resting .clock{color:var(--accent)}
+#restLane.done .clock{color:var(--over)}
+.cats{display:flex;flex-wrap:wrap;gap:6px}
+.cats button{padding:6px 12px;font-size:.82rem;border-radius:99px;font-weight:600}
+.cats button.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.tabs{display:grid;grid-template-columns:1fr 1fr 1fr;background:var(--track);border-radius:10px;padding:3px;gap:3px}
 .tabs button{border:0;background:transparent;padding:9px;font-size:.95rem;border-radius:8px;color:var(--muted)}
 .tabs button[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.12)}
 
@@ -121,7 +128,8 @@ details[open] summary{margin-bottom:12px}
   </header>
   <div class="tabs" role="tablist">
     <button type="button" role="tab" id="tabRun" aria-selected="true">Run</button>
-    <button type="button" role="tab" id="tabFood" aria-selected="false">Food &amp; deficit</button>
+    <button type="button" role="tab" id="tabWork" aria-selected="false">Workout</button>
+    <button type="button" role="tab" id="tabFood" aria-selected="false">Food</button>
   </div>
 
   <!-- RUN -->
@@ -162,6 +170,64 @@ details[open] summary{margin-bottom:12px}
     </section>
   </div>
 
+  <!-- WORKOUT -->
+  <div class="view" id="viewWork" hidden>
+    <section class="lane" aria-label="Rest timer" id="restLane">
+      <div class="between"><h2>Rest timer</h2><span class="small" id="restState">Tap a time after each set</span></div>
+      <div class="clock" id="restClock" style="font-size:clamp(3rem,16vw,4.6rem)">0:00</div>
+      <div class="presets">
+        <button type="button" data-rest="30">30s</button><button type="button" data-rest="60">60s</button>
+        <button type="button" data-rest="90">90s</button><button type="button" data-rest="120">2m</button>
+      </div>
+      <button type="button" class="ghost" id="restStop" hidden>Stop timer</button>
+    </section>
+
+    <section class="panel" aria-label="Log exercise">
+      <h2>Log exercise</h2>
+      <div class="cats" role="group" aria-label="Category">
+        <button type="button" data-cat="" class="on">All</button><button type="button" data-cat="Bodyweight">Bodyweight</button>
+        <button type="button" data-cat="Dumbbell">Dumbbell</button><button type="button" data-cat="Cardio">Cardio &amp; HIIT</button>
+        <button type="button" data-cat="Core">Core</button><button type="button" data-cat="Mobility">Stretch</button>
+      </div>
+      <label for="exSearch">Search
+        <input id="exSearch" type="search" placeholder="e.g. push-ups, curls, burpees" autocomplete="off">
+      </label>
+      <div class="results" id="exResults"></div>
+      <div class="note" id="exPicked">Pick an exercise above.</div>
+      <div class="row" id="exFields">
+        <label for="exSets" id="exSetsL">Sets
+          <input id="exSets" type="number" inputmode="numeric" min="1" step="1" value="3">
+        </label>
+        <label for="exReps" id="exRepsL"><span id="exRepsT">Reps per set</span>
+          <input id="exReps" type="number" inputmode="numeric" min="1" step="1" value="12">
+        </label>
+        <label for="exKg" id="exKgL">Dumbbell weight (kg each)
+          <input id="exKg" type="number" inputmode="decimal" min="0" step="0.5" placeholder="e.g. 5">
+        </label>
+        <label for="exMin">Total minutes
+          <input id="exMin" type="number" inputmode="decimal" min="1" step="1" value="6">
+        </label>
+      </div>
+      <button type="button" class="primary" id="exAdd" disabled>Log exercise</button>
+      <p class="small" id="exMsg" style="margin:0" aria-live="polite">Minutes include rest between sets. Adjust if your session was shorter or longer.</p>
+    </section>
+
+    <section class="panel" aria-label="Today's workout">
+      <div class="between"><h2>Today's workout</h2><span class="small" id="wkToday"></span></div>
+      <ul id="exList"></ul>
+    </section>
+
+    <section class="panel" aria-label="Last 7 days of workouts">
+      <h2>Last 7 days</h2>
+      <div class="week">
+        <div><b id="wkDays">0</b><span>workout days</span></div>
+        <div><b id="wkMin">0</b><span>minutes</span></div>
+        <div><b id="wkKcal">0</b><span>kcal</span></div>
+      </div>
+      <ul id="exHist"></ul>
+    </section>
+  </div>
+
   <!-- FOOD -->
   <div class="view" id="viewFood" hidden>
     <div class="daynav">
@@ -177,7 +243,7 @@ details[open] summary{margin-bottom:12px}
       <div class="small" id="defGoalText" style="text-align:center"></div>
       <div class="eq">
         <div><b id="eqMaint">0</b><span>Body uses</span></div>
-        <div><b id="eqRun">+0</b><span>Runs</span></div>
+        <div><b id="eqRun">+0</b><span>Exercise</span></div>
         <div><b id="eqEaten">−0</b><span>Eaten</span></div>
         <div><b id="eqLeft">0</b><span>Left to eat</span></div>
       </div>
@@ -285,15 +351,16 @@ details[open] summary{margin-bottom:12px}
     </section>
   </div>
 
-  <p class="small">Estimates only. Body use is calculated with the Mifflin–St Jeor formula; run calories use running MET values. About 7,700 kcal of deficit ≈ 1 kg. Data stays on this device.</p>
+  <p class="small">Estimates only. Body use is calculated with the Mifflin–St Jeor formula; run and workout calories use MET values from the Compendium of Physical Activities. About 7,700 kcal of deficit ≈ 1 kg. Data stays on this device.</p>
 </div>
 
 <script>
 (function(){
-  const K={runs:"stridelog.runs",w:"stridelog.weight",cur:"stridelog.current",food:"stridelog.food",prof:"stridelog.profile",tab:"stridelog.tab",custom:"stridelog.customFoods"};
+  const K={runs:"stridelog.runs",w:"stridelog.weight",cur:"stridelog.current",food:"stridelog.food",prof:"stridelog.profile",tab:"stridelog.tab",custom:"stridelog.customFoods",work:"stridelog.workouts"};
   const $=id=>document.getElementById(id);
   const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},
                set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+  let workouts=store.get(K.work,[]);
   const dayKey=t=>{const d=new Date(t);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
   const fromKey=k=>{const[y,m,d]=k.split("-").map(Number);return new Date(y,m-1,d)};
   const shiftKey=(k,n)=>{const d=fromKey(k);d.setDate(d.getDate()+n);return dayKey(d)};
@@ -307,11 +374,10 @@ details[open] summary{margin-bottom:12px}
 
   /* ===== Tabs ===== */
   function setTab(t){
-    $("viewRun").hidden=t!=="run";$("viewFood").hidden=t!=="food";
-    $("tabRun").setAttribute("aria-selected",t==="run");$("tabFood").setAttribute("aria-selected",t==="food");
-    store.set(K.tab,t); if(t==="food")renderFood();
+    [["run","Run"],["work","Work"],["food","Food"]].forEach(([k,n])=>{$("view"+n).hidden=t!==k;$("tab"+n).setAttribute("aria-selected",t===k)});
+    store.set(K.tab,t); if(t==="food")renderFood(); if(t==="work")renderWork();
   }
-  $("tabRun").onclick=()=>setTab("run");$("tabFood").onclick=()=>setTab("food");
+  $("tabRun").onclick=()=>setTab("run");$("tabWork").onclick=()=>setTab("work");$("tabFood").onclick=()=>setTab("food");
 
   /* ===== RUN ===== */
   const MET=[[0,1.3],[4,3.5],[6.4,6],[8,8.3],[8.4,9],[9.7,9.8],[10.8,10.5],[11.3,11],[12.1,11.8],[12.9,12.3],[13.8,12.8],[14.5,14.5],[16.1,16],[17.7,19],[19.3,19.8]];
@@ -470,7 +536,7 @@ details[open] summary{margin-bottom:12px}
 
   function bmr(){const w=weight(),h=+prof.height||170,a=+prof.age||30;return 10*w+6.25*h-5*a+(prof.sex==="f"?-161:5)}
   const maint=()=>bmr()*(+prof.act||1.2);
-  const runKcalOn=k=>runs.filter(r=>dayKey(r.date)===k).reduce((a,r)=>a+r.kcal,0);
+  const runKcalOn=k=>runs.filter(r=>dayKey(r.date)===k).reduce((a,r)=>a+r.kcal,0)+workouts.filter(w=>w.day===k).reduce((a,w)=>a+w.kcal,0);
   const eatenOn=k=>food.filter(f=>f.day===k).reduce((a,f)=>a+f.kcal*f.qty,0);
   const deficitOn=k=>maint()+runKcalOn(k)-eatenOn(k);
 
@@ -582,9 +648,9 @@ details[open] summary{margin-bottom:12px}
       if(days<=0){out.textContent="Pick a date in the future."}
       else{
         const req=total/days,eat=lose?m-req:m+req;
-        const wkRun=runs.filter(r=>r.date>=Date.now()-7*864e5).reduce((a,r)=>a+r.kcal,0)/7;
+        let wkRun=0;for(let i=0;i<7;i++){const dk=shiftKey(dayKey(Date.now()),-i);wkRun+=runKcalOn(dk)}wkRun/=7;
         let t=`To reach ${tgt} kg by ${fmtDate(fromKey(prof.by))} (${days} days), you need a ${num(req)} kcal daily ${word}. Eat about ${num(eat)} kcal a day`;
-        t+=wkRun>10?`, or about ${num(eat+wkRun)} kcal on your usual running (~${num(wkRun)} kcal/day lately).`:", plus whatever your runs burn that day.";
+        t+=wkRun>10?`, or about ${num(eat+wkRun)} kcal with your usual exercise (~${num(wkRun)} kcal/day lately).`:", plus whatever your exercise burns that day.";
         const safe=lose?750:500;
         if((lose&&(req>1000||eat<floor))||(!lose&&req>safe)){
           t+=` That pace is faster than generally advised${lose&&eat<floor?` and means eating below ${floor} kcal`:""}. A safer date at ${safe} kcal/day is ${fmtDate(addDays(Math.ceil(total/safe)))}.`;
@@ -640,6 +706,135 @@ details[open] summary{margin-bottom:12px}
   $("dayNext").onclick=()=>{if(viewDay<dayKey(Date.now())){viewDay=shiftKey(viewDay,1);renderFood()}};
 
   // profile inputs
+  /* ===== WORKOUT ===== */
+  // [name, category, MET, type]  type: r=reps, d=dumbbell reps, h=hold (seconds), t=timed (minutes only)
+  const EX=[
+    ["Push-ups","Bodyweight",8,"r"],["Knee push-ups","Bodyweight",3.8,"r"],["Incline push-ups","Bodyweight",3.8,"r"],["Diamond push-ups","Bodyweight",8,"r"],
+    ["Pike push-ups","Bodyweight",8,"r"],["Pull-ups","Bodyweight",8,"r"],["Chin-ups","Bodyweight",8,"r"],["Australian rows (table/bar)","Bodyweight",5,"r"],
+    ["Chair / bench dips","Bodyweight",5,"r"],["Bodyweight squats","Bodyweight",5,"r"],["Jump squats","Bodyweight",8,"r"],["Lunges","Bodyweight",4,"r"],
+    ["Reverse lunges","Bodyweight",4,"r"],["Bulgarian split squats","Bodyweight",5,"r"],["Pistol squats (assisted)","Bodyweight",5,"r"],["Step-ups (chair)","Bodyweight",5,"r"],
+    ["Glute bridges","Bodyweight",3.5,"r"],["Single-leg glute bridges","Bodyweight",3.8,"r"],["Calf raises","Bodyweight",2.8,"r"],["Wall sit","Bodyweight",3.5,"h"],
+    ["Plank","Core",3.8,"h"],["Side plank","Core",3.8,"h"],["Crunches","Core",3.8,"r"],["Sit-ups","Core",3.8,"r"],["Bicycle crunches","Core",3.8,"r"],
+    ["Leg raises","Core",3.8,"r"],["Russian twists","Core",3.8,"r"],["Flutter kicks","Core",3.8,"h"],["Dead bug","Core",3,"r"],["Superman","Core",3,"r"],
+    ["Hollow body hold","Core",3.8,"h"],["Mountain climbers","Cardio",8,"h"],["Burpees","Cardio",8,"r"],["Jumping jacks","Cardio",8,"h"],
+    ["High knees","Cardio",8,"h"],["Butt kicks","Cardio",7,"h"],["Skater jumps","Cardio",8,"r"],["Jump rope","Cardio",11.8,"t"],
+    ["HIIT circuit","Cardio",8,"t"],["Tabata (4 min rounds)","Cardio",8,"t"],["Shadow boxing","Cardio",5.5,"t"],["Stair climbing","Cardio",8,"t"],
+    ["Zumba / dance workout","Cardio",7.3,"t"],["Brisk walking","Cardio",4.3,"t"],["Cycling, stationary (moderate)","Cardio",6.8,"t"],
+    ["Dumbbell bicep curls","Dumbbell",3.5,"d"],["Hammer curls","Dumbbell",3.5,"d"],["Shoulder press","Dumbbell",4,"d"],["Lateral raises","Dumbbell",3.5,"d"],
+    ["Front raises","Dumbbell",3.5,"d"],["Bent-over rows","Dumbbell",4,"d"],["One-arm rows","Dumbbell",4,"d"],["Floor press / chest press","Dumbbell",4,"d"],
+    ["Chest flyes","Dumbbell",3.5,"d"],["Tricep overhead extension","Dumbbell",3.5,"d"],["Tricep kickbacks","Dumbbell",3.5,"d"],["Goblet squats","Dumbbell",5,"d"],
+    ["Dumbbell lunges","Dumbbell",5,"d"],["Romanian deadlifts","Dumbbell",5,"d"],["Dumbbell deadlifts","Dumbbell",5,"d"],["Sumo squats","Dumbbell",5,"d"],
+    ["Thrusters","Dumbbell",6,"d"],["Dumbbell swings","Dumbbell",6,"d"],["Renegade rows","Dumbbell",6,"d"],["Shrugs","Dumbbell",3,"d"],
+    ["Arnold press","Dumbbell",4,"d"],["Farmer's carry","Dumbbell",5,"t"],["Full-body dumbbell circuit","Dumbbell",6,"t"],
+    ["Stretching","Mobility",2.3,"t"],["Yoga (gentle)","Mobility",2.5,"t"],["Power yoga","Mobility",4,"t"],["Pilates","Mobility",3,"t"],["Foam rolling","Mobility",2,"t"]
+  ].map(([name,cat,met,type])=>({name,cat,met,type}));
+  let exCat="",exSel=null,minEdited=false;
+
+  function autoMinutes(){
+    if(!exSel||minEdited)return;
+    const sets=Math.max(1,+$("exSets").value||1),reps=Math.max(1,+$("exReps").value||1);
+    let m;
+    if(exSel.type==="h")m=sets*(reps+60)/60;               // hold seconds + ~1 min rest
+    else if(exSel.type==="t")return;
+    else m=sets*(reps*3+60)/60;                              // ~3 s per rep + ~1 min rest
+    $("exMin").value=Math.max(1,Math.round(m));
+  }
+  function exKcal(){if(!exSel)return 0;const min=+$("exMin").value||0;return exSel.met*weight()*min/60}
+  function exPreview(){
+    if(!exSel)return;
+    $("exPicked").textContent=`${exSel.name} · about ${num(exKcal())} kcal for ${+$("exMin").value||0} min`;
+  }
+  function pickEx(e){
+    exSel=e;minEdited=false;
+    const t=e.type;
+    $("exSetsL").hidden=t==="t";$("exRepsL").hidden=t==="t";$("exKgL").hidden=t!=="d";
+    $("exRepsT").textContent=t==="h"?"Seconds per set":"Reps per set";
+    if(t==="h")$("exReps").value=30;else if(t!=="t"&&(+$("exReps").value>=25))$("exReps").value=12;
+    if(t==="t")$("exMin").value=20;
+    autoMinutes();exPreview();$("exAdd").disabled=false;
+    $("exMsg").textContent=t==="t"?"Enter how many minutes you did.":"Minutes include rest between sets. Adjust if your session was shorter or longer.";
+  }
+  function renderExResults(){
+    const q=$("exSearch").value.trim().toLowerCase(),words=q.split(/\s+/).filter(Boolean),box=$("exResults");box.innerHTML="";
+    const list=EX.filter(e=>(!exCat||e.cat===exCat)&&words.every(w=>e.name.toLowerCase().includes(w)));
+    box.hidden=!list.length;
+    list.forEach(e=>{
+      const b=document.createElement("button");b.type="button";
+      const n=document.createElement("b");n.style.fontWeight="500";n.textContent=e.name;
+      const s=document.createElement("span");s.textContent=e.cat==="Cardio"?"Cardio":e.cat;
+      b.append(n,s);if(exSel===e)b.classList.add("picked");
+      b.onclick=()=>{box.querySelectorAll(".picked").forEach(x=>x.classList.remove("picked"));b.classList.add("picked");pickEx(e)};
+      box.appendChild(b);
+    });
+  }
+  document.querySelectorAll(".cats button").forEach(b=>b.onclick=()=>{
+    document.querySelectorAll(".cats button").forEach(x=>x.classList.toggle("on",x===b));exCat=b.dataset.cat;renderExResults()});
+  $("exSearch").addEventListener("input",renderExResults);
+  ["exSets","exReps"].forEach(id=>$(id).addEventListener("input",()=>{autoMinutes();exPreview()}));
+  $("exMin").addEventListener("input",()=>{minEdited=true;exPreview()});
+  $("exAdd").onclick=()=>{
+    if(!exSel)return;
+    const min=+$("exMin").value;
+    if(!(min>0)){$("exMsg").textContent="Enter how many minutes the exercise took.";$("exMin").focus();return}
+    const t=exSel.type,entry={id:Date.now()+Math.random(),day:dayKey(Date.now()),time:Date.now(),name:exSel.name,cat:exSel.cat,type:t,min:Math.round(min*10)/10,kcal:Math.round(exKcal())};
+    if(t!=="t"){entry.sets=+$("exSets").value||1;entry.reps=+$("exReps").value||0}
+    if(t==="d"&&+$("exKg").value>0)entry.kg=+$("exKg").value;
+    workouts.push(entry);store.set(K.work,workouts);
+    $("exMsg").textContent=`Logged ${exSel.name}: ${entry.kcal} kcal.`;
+    renderWork();
+  };
+  function exDetail(w){
+    const p=[];
+    if(w.sets){p.push(w.type==="h"?`${w.sets} × ${w.reps}s`:`${w.sets} × ${w.reps}`)}
+    if(w.kg)p.push(`${w.kg} kg`);
+    p.push(`${w.min} min`,`${w.kcal} kcal`);return p.join(" · ");
+  }
+  function renderWork(){
+    const today=dayKey(Date.now()),list=workouts.filter(w=>w.day===today),ul=$("exList");ul.innerHTML="";
+    if(!list.length){const li=document.createElement("li");li.className="empty";li.textContent="Nothing logged today. Pick an exercise above to start.";ul.appendChild(li)}
+    list.forEach(w=>{
+      const li=document.createElement("li");
+      const a=document.createElement("div");a.className="r-main";a.style.fontSize="1rem";a.textContent=w.name;
+      const b=document.createElement("div");b.className="r-sub";b.textContent=exDetail(w);
+      const del=document.createElement("button");del.type="button";del.className="del";del.textContent="Remove";
+      armButton(del,"Remove","Confirm",()=>{workouts=workouts.filter(x=>x.id!==w.id);store.set(K.work,workouts);renderWork()});
+      li.append(a,del,b);ul.appendChild(li);
+    });
+    const tk=list.reduce((a,w)=>a+w.kcal,0),tm=list.reduce((a,w)=>a+w.min,0);
+    $("wkToday").textContent=list.length?`${Math.round(tm)} min · ${num(tk)} kcal`:"";
+    // last 7 days
+    const days=[...Array(7)].map((_,i)=>shiftKey(today,-i));
+    const wk=workouts.filter(w=>days.includes(w.day));
+    $("wkDays").textContent=new Set(wk.map(w=>w.day)).size;
+    $("wkMin").textContent=num(wk.reduce((a,w)=>a+w.min,0));
+    $("wkKcal").textContent=num(wk.reduce((a,w)=>a+w.kcal,0));
+    const h=$("exHist");h.innerHTML="";
+    days.slice(1).forEach(dk=>{
+      const items=workouts.filter(w=>w.day===dk);if(!items.length)return;
+      const li=document.createElement("li");
+      const a=document.createElement("div");a.style.fontWeight="600";a.textContent=dayName(dk);
+      const s=document.createElement("div");s.className="r-sub";s.style.gridColumn="1/-1";
+      s.textContent=items.map(w=>w.name).join(", ");
+      const k=document.createElement("div");k.className="r-sub";k.textContent=`${Math.round(items.reduce((x,w)=>x+w.min,0))} min · ${num(items.reduce((x,w)=>x+w.kcal,0))} kcal`;
+      li.append(a,k,s);h.appendChild(li);
+    });
+  }
+
+  // rest timer
+  let restEnd=0,restIv=null,actx=null;
+  function beep(){try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();[0,.25,.5].forEach(t=>{const o=actx.createOscillator(),g=actx.createGain();o.frequency.value=880;g.gain.value=.15;o.connect(g);g.connect(actx.destination);o.start(actx.currentTime+t);o.stop(actx.currentTime+t+.15)})}catch(e){}
+    try{navigator.vibrate&&navigator.vibrate([200,100,200,100,300])}catch(e){}}
+  function restTick(){
+    const left=Math.max(0,Math.ceil((restEnd-Date.now())/1000));
+    $("restClock").textContent=`${Math.floor(left/60)}:${String(left%60).padStart(2,"0")}`;
+    if(left<=0){clearInterval(restIv);restIv=null;$("restLane").className="lane done";$("restState").textContent="Rest over. Next set!";$("restStop").hidden=true;beep();wake(false)}
+  }
+  document.querySelectorAll("[data-rest]").forEach(b=>b.onclick=()=>{
+    try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();actx.resume&&actx.resume()}catch(e){}
+    restEnd=Date.now()+(+b.dataset.rest)*1000;$("restLane").className="lane resting";$("restState").textContent="Resting…";$("restStop").hidden=false;
+    clearInterval(restIv);restIv=setInterval(restTick,200);restTick();wake(true)});
+  $("restStop").onclick=()=>{clearInterval(restIv);restIv=null;$("restLane").className="lane";$("restClock").textContent="0:00";$("restState").textContent="Tap a time after each set";$("restStop").hidden=true;if(cur.state!=="running")wake(false)};
+
   const pmap={pSex:"sex",pAge:"age",pHeight:"height",pWeight:"weight",pAct:"act",pGoal:"goal"};
   Object.entries(pmap).forEach(([id,key])=>{$(id).value=prof[key];$(id).addEventListener("change",()=>{prof[key]=$(id).value;saveProf();$("weightIn").value=weight();renderFood()})});
   if(!store.get(K.prof,null))$("profileBox").open=true;
@@ -647,8 +842,9 @@ details[open] summary{margin-bottom:12px}
 
   // init
   if(cur.state==="running"){startGps();wake(true)}
-  renderControls();tick();renderHistory();renderResults();
-  setTab(store.get(K.tab,"run")==="food"?"food":"run");
+  renderControls();tick();renderHistory();renderResults();renderExResults();renderWork();
+  const savedTab=store.get(K.tab,"run");
+  setTab(["run","work","food"].includes(savedTab)?savedTab:"run");
 })();
 </script>
 
